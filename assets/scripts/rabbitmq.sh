@@ -1,15 +1,6 @@
 #!/bin/bash
+# Launch rabbitmq
 set -eu
-
-export APP_SHORTNAME="${MESOS_TASK_ID//./-}"
-export RABBITMQ_NODENAME="rabbit@$APP_SHORTNAME"
-
-if [ "$(id -u)" == '0' ]
-then
-    # Only execute with root user
-    /usr/local/bin/update-hosts.sh $MARATHON_URL $MARATHON_APP_ID /etc/hosts
-    cat /etc/hosts
-fi
 
 # usage: file_env VAR [DEFAULT]
 #    ie: file_env 'XYZ_DB_PASSWORD' 'example'
@@ -32,14 +23,6 @@ file_env() {
 	export "$var"="$val"
 	unset "$fileVar"
 }
-
-# allow the container to be started with `--user`
-if [[ "$1" == rabbitmq* ]] && [ "$(id -u)" = '0' ]; then
-	if [ "$1" = 'rabbitmq-server' ]; then
-		chown -R rabbitmq /var/lib/rabbitmq
-	fi
-	exec su-exec rabbitmq "$BASH_SOURCE" "$@"
-fi
 
 # backwards compatibility for old environment variables
 : "${RABBITMQ_SSL_CERTFILE:=${RABBITMQ_SSL_CERT_FILE:-}}"
@@ -245,7 +228,7 @@ rabbit_env_config() {
 	join $'\n' "${ret[@]}"
 }
 
-if [ "$1" = 'rabbitmq-server' ] && [ "$haveConfig" ]; then
+if [ "$haveConfig" ]; then
 	fullConfig=()
 
 	rabbitConfig=(
@@ -319,7 +302,7 @@ if [ "$1" = 'rabbitmq-server' ] && [ "$haveConfig" ]; then
 fi
 
 combinedSsl='/tmp/combined.pem'
-if [ "$haveSslConfig" ] && [[ "$1" == rabbitmq* ]] && [ ! -f "$combinedSsl" ]; then
+if [ "$haveSslConfig" ] && [ ! -f "$combinedSsl" ]; then
 	# Create combined cert
 	cat "$RABBITMQ_SSL_CERTFILE" "$RABBITMQ_SSL_KEYFILE" > "$combinedSsl"
 	chmod 0400 "$combinedSsl"
@@ -333,4 +316,4 @@ if [ "$haveSslConfig" ] && [ -f "$combinedSsl" ]; then
 	export RABBITMQ_CTL_ERL_ARGS="$RABBITMQ_SERVER_ADDITIONAL_ERL_ARGS"
 fi
 
-exec "$@"
+exec "rabbitmq-server"

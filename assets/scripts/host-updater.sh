@@ -1,5 +1,5 @@
 #!/bin/bash
-
+# Update rabbitmq sibling host names
 set -e
 
 TASK_LIST_URL="$1/v2/apps/$2/tasks"
@@ -19,6 +19,7 @@ buildHostBlock()
         if [ "$hostIp" != "null" ]
         then
             local hostName=$(_jq '.id')
+            hostName="${hostName//./-}"
             hostBlock="${hostBlock}${hostIp} ${hostName}\n"
         fi
     done
@@ -39,14 +40,14 @@ $start\n$hostBlock\n$end" $tmpFilePath
 
 echo -e "### START - DYNAMIC MARATHON HOSTS\n`hostname -i` $APP_SHORTNAME\n### END - DYNAMIC MARATHON HOSTS\n" >> $HOST_FILE_PATH
 
-# while true
-# do
-	# hostBlock="\n"
-    # buildHostBlock
-    # updateHostFile
-    # cat $HOST_FILE_PATH
+while true
+do
+	hostBlock="\n"
+    buildHostBlock
+    updateHostFile
+    cat $HOST_FILE_PATH
 
-    # Update every 30 seconds
-	# sleep 30
-# done
+    # Update host file every 30 seconds
+	sleep 30
+done
 
